@@ -13,6 +13,19 @@
 
 現在の実装は、回答しやすさと4軸のバランスを重視したプロトタイプです。信頼性係数、再検査信頼性、他の指標との妥当性、対象者を増やした項目分析はまだ実施していないため、「正確な診断」とは表現しません。実運用前には、同意を得た匿名データでこれらを検証し、設問と採点を改訂する必要があります。
 
+## 結果コンテンツについて
+
+- 結果画面では、4軸の割合・両側の説明・回答一覧（32問）を確認できます。
+- 各タイプに、キーワード、力が出やすい場面、人との関わり方、成長のヒントを表示します。
+- 相性は「最良の組み合わせ」を断定せず、共通する情報・判断の見方と、補完になりうる違いから参考候補を表示します。
+- 軸とタイプの説明は、公開されているMBTI関連情報を参考に、この自己理解用アプリ向けに再構成しています。
+
+参考にした公開情報：
+
+- [MBTI公式：4つの選好](https://www.myersbriggs.org/my-mbti-personality-type/the-mbti-preferences/)
+- [MBTI公式：16タイプの説明](https://www.myersbriggs.org/my-mbti-personality-type/the-16-mbti-personality-types/home.htm)
+- [MBTI公式：タイプと関係性](https://www.myersbriggs.org/type-in-my-life/personality-type-and-relationships/home.htm)
+
 ## 開発
 
 ```bash

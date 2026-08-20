@@ -3,10 +3,13 @@ import {
   axisMeta,
   axisOrder,
   questions,
+  researchSources,
   responseOptions,
+  typeInsights,
   typeProfiles,
   type AxisCode,
   type ResponseValue,
+  type TypeCode,
 } from './data'
 import { scoreAnswers, type AnalysisResult, type Answers, type AxisResult } from './engine'
 
@@ -126,12 +129,19 @@ function IntroScreen({ onStart }: { onStart: () => void }) {
           </div>
         </div>
         <div className="axis-key">
-          {axisOrder.map((axis) => (
-            <span key={axis}>
-              <i style={{ backgroundColor: axisMeta[axis].color }} />
-              {axisMeta[axis].title}
-            </span>
-          ))}
+          {axisOrder.map((axis) => {
+            const meta = axisMeta[axis]
+            return (
+              <div className="axis-key-item" key={axis}>
+                <div className="axis-key-heading">
+                  <i style={{ backgroundColor: meta.color }} />
+                  <b>{meta.first} / {meta.second}</b>
+                  <span>{meta.title}</span>
+                </div>
+                <small>{meta.firstLabel} ↔ {meta.secondLabel}</small>
+              </div>
+            )
+          })}
         </div>
       </aside>
 
@@ -265,6 +275,7 @@ function QuizScreen({
 }
 
 function AxisResultCard({ result }: { result: AxisResult }) {
+  const meta = axisMeta[result.code]
   const firstIsWinner = result.winner === 'first'
   const secondIsWinner = result.winner === 'second'
   const winnerText = result.winner === 'tie'
@@ -290,11 +301,165 @@ function AxisResultCard({ result }: { result: AxisResult }) {
         <span className={firstIsWinner ? 'is-winner' : ''}><b>{result.first}</b> {result.firstLabel}</span>
         <span className={secondIsWinner ? 'is-winner' : ''}>{result.secondLabel} <b>{result.second}</b></span>
       </div>
+      <div className="axis-result-descriptions">
+        <div>
+          <strong>{meta.first} / {meta.firstLabel}</strong>
+          <p>{meta.firstDescription}</p>
+        </div>
+        <div>
+          <strong>{meta.second} / {meta.secondLabel}</strong>
+          <p>{meta.secondDescription}</p>
+        </div>
+      </div>
     </article>
   )
 }
 
-function ResultScreen({ analysis, onRestart }: { analysis: AnalysisResult; onRestart: () => void }) {
+const typeCodes = Object.keys(typeProfiles) as TypeCode[]
+const compatibilityAxes = [
+  { index: 0, label: 'エネルギー' },
+  { index: 3, label: '進め方' },
+]
+
+function getCompatibilityCandidates(type: TypeCode): TypeCode[] {
+  return typeCodes
+    .filter((candidate) => candidate !== type && candidate[1] === type[1] && candidate[2] === type[2])
+    .sort((left, right) => {
+      const leftDifference = Number(left[0] !== type[0]) + Number(left[3] !== type[3])
+      const rightDifference = Number(right[0] !== type[0]) + Number(right[3] !== type[3])
+      return rightDifference - leftDifference || left.localeCompare(right)
+    })
+}
+
+function compatibilityReason(type: TypeCode, candidate: TypeCode): string {
+  const shared = [
+    type[1] === candidate[1] ? '情報の受け取り方' : '',
+    type[2] === candidate[2] ? '判断のよりどころ' : '',
+  ].filter(Boolean)
+  const different = compatibilityAxes
+    .filter(({ index }) => type[index] !== candidate[index])
+    .map(({ label }) => label)
+
+  return `${shared.join('・')}が近く、${different.length ? `${different.join('・')}の違いが役割分担や新しい視点につながりやすい` : '自然なペースを共有しやすい'}候補です。`
+}
+
+function TypeGuide({ analysis }: { analysis: AnalysisResult }) {
+  const insight = typeInsights[analysis.type]
+  const candidates = getCompatibilityCandidates(analysis.type)
+
+  return (
+    <section className="type-guide">
+      <div className="profile-detail-heading">
+        <span className="section-index">03 / TYPE GUIDE</span>
+        <h2>このタイプを、日常の言葉にすると</h2>
+      </div>
+      <div className="type-guide-body">
+        <div className="type-keywords" aria-label="このタイプのキーワード">
+          {insight.keywords.map((keyword) => <span key={keyword}>{keyword}</span>)}
+        </div>
+        <div className="insight-grid">
+          <div className="insight-card">
+            <span className="detail-label">力が出やすい場面</span>
+            <p>{insight.workStyle}</p>
+          </div>
+          <div className="insight-card">
+            <span className="detail-label">人との関わり方</span>
+            <p>{insight.communication}</p>
+          </div>
+          <div className="insight-card insight-card-wide">
+            <span className="detail-label">伸びしろとして意識すること</span>
+            <p>{insight.growth}</p>
+          </div>
+        </div>
+
+        <div className="compatibility-panel">
+          <div className="compatibility-heading">
+            <div>
+              <span className="detail-label">RELATIONSHIPS / REFERENCE</span>
+              <h3>相性が良い候補</h3>
+            </div>
+            <span className="compatibility-mark" aria-hidden="true">↗</span>
+          </div>
+          <p className="compatibility-intro">
+            「合う・合わない」を決めるものではなく、共通点を土台に違いを活かしやすいタイプを表示しています。
+          </p>
+          <div className="compatibility-grid">
+            {candidates.map((candidate) => (
+              <article className="compatibility-card" key={candidate}>
+                <div className="compatibility-type-line">
+                  <strong>{candidate}</strong>
+                  <span>{typeProfiles[candidate].name}</span>
+                </div>
+                <p>{compatibilityReason(analysis.type, candidate)}</p>
+              </article>
+            ))}
+          </div>
+          <p className="compatibility-note">タイプの組み合わせに「最良の正解」はありません。実際の相性は、尊重・対話・状況によって変わります。</p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function AnswerReview({ answers }: { answers: Answers }) {
+  return (
+    <section className="answer-review">
+      <div className="profile-detail-heading">
+        <span className="section-index">04 / YOUR ANSWERS</span>
+        <h2>32問の回答一覧</h2>
+      </div>
+      <p className="answer-review-intro">今回の回答と、それぞれの軸でどちら側に反映されたかを確認できます。</p>
+      <div className="answer-review-list">
+        {questions.map((question, index) => {
+          const meta = axisMeta[question.axis]
+          const value = answers[question.id] ?? 0
+          const option = responseOptions.find((item) => item.value === value)
+          const orientedValue = question.polarity === 'first' ? value : -value
+          const preference = orientedValue === 0
+            ? '中立'
+            : orientedValue > 0
+              ? `${meta.first}・${meta.firstLabel}`
+              : `${meta.second}・${meta.secondLabel}`
+
+          return (
+            <article className="answer-review-item" key={question.id}>
+              <span className="answer-review-number">Q{(index + 1).toString().padStart(2, '0')}</span>
+              <div className="answer-review-main">
+                <div className="answer-review-meta">
+                  <span style={{ color: meta.color }}>{meta.first} / {meta.second} · {meta.title}</span>
+                  <strong>{option?.label ?? '中立'}</strong>
+                </div>
+                <p>{question.prompt}</p>
+                <small>{preference}</small>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function ResearchNotes() {
+  return (
+    <section className="result-sources">
+      <div>
+        <span className="section-index">05 / REFERENCE</span>
+        <h2>このページの考え方</h2>
+      </div>
+      <div>
+        <p>4つの軸の説明とタイプ解説は、MBTI公式サイトの公開情報を参考に、この自己理解ツール向けに再構成しています。ここでの結果は公式検査ではありません。</p>
+        <ul>
+          {researchSources.map((source) => (
+            <li key={source.url}><a href={source.url} target="_blank" rel="noreferrer">{source.label}<ArrowUpRight /></a></li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )
+}
+
+function ResultScreen({ analysis, answers, onRestart }: { analysis: AnalysisResult; answers: Answers; onRestart: () => void }) {
   const profile = typeProfiles[analysis.type]
 
   return (
@@ -321,7 +486,7 @@ function ResultScreen({ analysis, onRestart }: { analysis: AnalysisResult; onRes
         <div className="result-section-heading">
           <span className="section-index">01 / AXES</span>
           <h2>4つの軸で見る、今の輪郭</h2>
-          <p>割合は優劣ではなく、回答がどちら側に寄ったかの目安です。</p>
+          <p>割合は優劣ではなく、回答がどちら側に寄ったかの目安です。E/Iは社交性、T/Fは感情の強さを直接表すものではありません。</p>
         </div>
         <div className="axis-result-grid">
           {axisOrder.map((axis) => <AxisResultCard key={axis} result={analysis.axes[axis]} />)}
@@ -346,6 +511,10 @@ function ResultScreen({ analysis, onRestart }: { analysis: AnalysisResult; onRes
             </div>
           </div>
         </div>
+
+        <TypeGuide analysis={analysis} />
+        <AnswerReview answers={answers} />
+        <ResearchNotes />
 
         <div className="result-actions">
           <button className="primary-button" type="button" onClick={onRestart}>もう一度分析する <ArrowUpRight /></button>
@@ -417,7 +586,7 @@ function App() {
   if (screen === 'quiz') {
     content = <QuizScreen answers={answers} currentIndex={currentIndex} validation={validation} onSelect={selectAnswer} onBack={goBack} onNext={goNext} />
   }
-  if (screen === 'result' && analysis) content = <ResultScreen analysis={analysis} onRestart={restart} />
+  if (screen === 'result' && analysis) content = <ResultScreen analysis={analysis} answers={answers} onRestart={restart} />
 
   return (
     <div className="app-shell">
